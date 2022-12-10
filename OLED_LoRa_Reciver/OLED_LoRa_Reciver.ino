@@ -66,16 +66,3 @@ void cbk(int packetSize) {
   Serial.println(packet);
 }
 
-//função responsável por configurar os dadosque serão exibidos em tela.
-//RSSI : primeira linha
-//RX packSize : segunda linha
-//packet : terceira linha
-// void loraData(){
-//   display.clear();
-//   display.setTextAlignment(TEXT_ALIGN_LEFT);
-//   display.setFont(ArialMT_Plain_16);
-//   display.drawString(0 , 18 , "Rx "+ packSize + " bytes");
-  
-//   display.drawString(0, 0, rssi);  
-//   display.display();
-// }
