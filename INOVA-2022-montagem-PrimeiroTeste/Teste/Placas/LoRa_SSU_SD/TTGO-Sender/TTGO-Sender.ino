@@ -3,9 +3,8 @@
 #include <LoRa.h>
 #include <SD.h>
 #include <SSD1306.h>
-#include <Arduino.h>
 #include <HardwareSerial.h>
- #include "RTCDS1307.h"
+#include "RTCDS1307.h"
 
 byte octetos[9]="12345678"; //  Vetor de Bytes que acondiciona os dados recebidos da SSU.
 byte oux_byte=0;  // Ou exclusivo de todos os dados recebidos pela SSU até o momento. Ao final, deve-se realizar a inversão desta variável para a comparação com o Byte de verificação.
@@ -24,44 +23,28 @@ HardwareSerial SSU(1);
 
 File file;
 
-
-#define MOSI 15
-#define MISO 2
-#define CLK 14
-#define CS 13
+//pinagem sd
+#define SD_MOSI 15
+#define SD_MISO 2
+#define SD_CLK  14
+#define SD_CS   13
 //Alterado Carlos 22/11/22 
 
-//OLED pins to ESP32 GPIOs via this connecthin:
-//OLED_SDA -- GPIO4
-//OLED_SCL -- GPIO15
-//OLED_RST -- GPIO16
 
 // Alterado 29/11/22
 // SSD1306  display(0x3c, 22, 21);
- 
-// WIFI_LoRa_32 ports
-// GPIO5  -- SX1278's SCK
-// GPIO19 -- SX1278's MISO
-// GPIO27 -- SX1278's MOSI
-// GPIO18 -- SX1278's CS
-// GPIO14 -- SX1278's RESET
-// GPIO26 -- SX1278's IRQ(Interrupt Request)
- 
-#define SS      18
-#define RST     12
-#define DI0     26
-#define BAND    433E6  //915E6 
+
 
 RTCDS1307 rtc(0x68);
 
 //pinagem lora
-#define LORA_SCK     5
-#define LORA_MISO    19
-#define LORA_MOSI    27
-#define LORA_CS      18
-#define LORA_RST     14
-#define LORA_DI00    26
-
+#define LORA_SCK     5  // GPIO5  -- SX1278's SCK
+#define LORA_MISO    19 // GPIO19 -- SX1278's MISO
+#define LORA_MOSI    27 // GPIO27 -- SX1278's MOSI
+#define LORA_CS      18 // GPIO18 -- SX1278's CS
+#define LORA_RST     14 // GPIO14 -- SX1278's RESET
+#define LORA_DI00    26 // GPIO26 -- SX1278's IRQ(Interrupt Request)
+#define BAND         915E6  //915E6 
 
 //RTC
 uint8_t year, month, weekday, day, hour, minute, second;
@@ -82,50 +65,18 @@ void setup() {
   while (!SSU);
   
   Serial.begin(115200);
-  
-  // Initialising the UI will init the display too.
-  //SPI.begin(5,19,27,18);
-  /*
-  display.init();
-  display.flipScreenVertically();
-  display.setFont(ArialMT_Plain_10);
-  display.setTextAlignment(TEXT_ALIGN_LEFT);
-  display.drawString(5,5,"LoRa Sender");
-  display.display();
-  */
-  SPI.begin(5,19,27,18);
-  LoRa.setPins(SS,RST,DI0);
-  Serial.println("LoRa Sender");
-  if (!LoRa.begin(433E6)) {
-    Serial.println("Starting LoRa failed!");
-    while (1);
-  }
-  Serial.println("LoRa Initial OK!");
-  //display.drawString(5,20,"LoRa Initializing OK!");
-  //display.display();
 
-  //inicia porta cartao sd
+  //inicia porta cartao fecha a porta do lora e 
   SPI.end();
   
-  SPI.begin(CLK, MISO, MOSI, CS);
-  while(!SD.begin(13)) {
-    delay(1000);
-  }
+
   Serial.println("Init SD");
-  delay(2000);
+  delay(1000);
   
   Serial.begin(115200);
   rtc.begin();
   // rtc.setDate(22, 12, 7);
   // rtc.setTime(19, 5, 00);
-
-  LoRa.setPins(LORA_CS,LORA_RST,LORA_DI00);
-
-    Serial.println("LoRa Sender");
-  if (!LoRa.begin(BAND)) {
-    Serial.println("Starting LoRa failed!");
-    while (1);
-  }
 
   Serial.println("LoRa Initial OK!");  
   SD.remove("/octetos.csv");
@@ -133,32 +84,6 @@ void setup() {
     Serial.println("Falha em apagar o arquivo!");
     while(1);
   }
-  SPI.end();
-}
-
-void envia_lora(){
-
-  SPI.begin(LORA_SCK,LORA_MISO,LORA_MOSI,LORA_CS);
-  
-  // Formação da string.
-  octetos_="";
-  for(int i=0;i<8;i++)
-    octetos_+=octetos[i];
-  
-  // Serial.print(counter);
-  // Serial.print(": ");
-  // Serial.print(octetos_);
-  // Serial.println();
-
-  // send packet
-  LoRa.beginPacket();
-  LoRa.print(timestemp);
-  LoRa.print(";");
-  LoRa.print(octetos_);
-  //LoRa.write(octetos,8);
-  LoRa.endPacket();
-  counter++;
-
   SPI.end();
 }
 
@@ -178,40 +103,9 @@ void loop() {
       
       if(verificacao_ok)
       {
+        SaveSD();
         envia_lora();
-        // Formação da string.
-        // octetos_="";
-        // for(int i=0;i<8;i++){
-        //   octetos_+=octetos[i];
-        //   octetos_+=":";
         }
-
-        /* DEBUG na serial */
-        /*
-        dateNow();
-        Serial.print(counter);
-        Serial.print(": ");
-        //for(int i=0;i<8;i++)
-        //  Serial.write(octetos[i]);
-        Serial.print(octetos_);
-        Serial.println();
-        */
-        /*
-        display.clear();
-        display.setFont(ArialMT_Plain_16);  
-        display.drawString(12, 5, octetos_);
-        display.drawString(50, 30, String(counter));
-        display.display();
-        */
-        SPI.begin(5,19,27,18); //Abrindo serial LoRa
-        // send packet
-        LoRa.beginPacket();
-          LoRa.print(timestemp);
-          LoRa.print(";");
-          LoRa.print(octetos_);
-          //LoRa.write(octetos,8);
-        LoRa.endPacket();
-        counter++;
 
         //DEBUG 
         Serial.print(timestemp);
@@ -221,9 +115,7 @@ void loop() {
         
         SPI.end();
   
-        SPI.begin(CLK, MISO, MOSI, CS);
-        SaveSD();
-        SPI.end();
+
       }
       delay(1000);
 
@@ -272,4 +164,62 @@ void loop() {
       dateNow(); // Quando finalizar a leitura
     }
   } 
+
+
+void SaveSD(){
+  
+  SPI.begin(CLK, MISO, MOSI, CS);
+  while(!SD.begin(CS)) {
+    delay(1000);
+  }
+  String octeto="";
+  
+  file = SD.open("/octetos.csv", FILE_APPEND);
+
+  //erial.println(timestemp);
+  file.print(timestemp);
+  file.print(",");
+  
+  for(int i=0;i<8;i++){
+      file.print(octetos[i]);
+      file.print(";");  
+  }
+  file.println();
+  
+  file.close();  
+  Serial.print("Save!\n");
+
+  SPI.end();
+}
+
+void envia_lora(){
+    //inicia pinagem para lora
+  SPI.begin(LORA_SCK,LORA_MISO,LORA_MOSI,LORA_CS);
+  LoRa.setPins(LORA_CS,LORA_RST,LORA_DI00);
+  Serial.println("LoRa Sender");
+  if (!LoRa.begin(BAND)) {
+    Serial.println("Starting LoRa failed!");
+    while (1);
+  }
+  Serial.println("LoRa Initial OK!");
+  
+  // Formação da string.
+  octetos_="";
+  for(int i=0;i<8;i++)
+    octetos_+=octetos[i];
+  
+  Serial.print(counter);
+  Serial.print(": ");
+  Serial.print(octetos_);
+  Serial.println();
+
+  // send packet
+  LoRa.beginPacket();
+    LoRa.print(timestemp);
+    LoRa.print(";");
+    LoRa.print(octetos_);
+  LoRa.endPacket();
+  counter++;
+
+  SPI.end();
 }

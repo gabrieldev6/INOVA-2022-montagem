@@ -1,4 +1,9 @@
 void SaveSD(){
+  
+  SPI.begin(CLK, MISO, MOSI, CS);
+  while(!SD.begin(13)) {
+    delay(1000);
+  }
   String octeto="";
   
   file = SD.open("/octetos.csv", FILE_APPEND);

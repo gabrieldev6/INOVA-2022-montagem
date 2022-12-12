@@ -4,21 +4,12 @@
 int counter = 0;
 
 // WIFI_LoRa_32 ports
-// GPIO5  -- SX1278's SCK
-// GPIO19 -- SX1278's MISO
-// GPIO27 -- SX1278's MOSI
-// GPIO18 -- SX1278's CS
-// GPIO14 -- SX1278's RESET
-// GPIO26 -- SX1278's IRQ(Interrupt Request)
-
-
-#define SCK     5
-#define MISO    19
-#define MOSI    27
-#define CS      18
-#define RST     14
-#define DI00    26
-
+#define SCK     5   // GPIO5  -- SX1278's SCK
+#define MISO    19  // GPIO19 -- SX1278's MISO
+#define MOSI    27  // GPIO27 -- SX1278's MOSI
+#define CS      18  // GPIO18 -- SX1278's CS
+#define RST     14  // GPIO14 -- SX1278's RESET
+#define DI00    26  // GPIO26 -- SX1278's IRQ(Interrupt Request)
 
 #define BAND 915E6
 
