@@ -53,6 +53,7 @@ bool period = 0;
 String timestemp = "";
 void SaveSD();
 void dateNow();
+void envia_lora();
 
 void setup() {
   pinMode(25,OUTPUT); //Send success, LED will bright 1 second
@@ -106,7 +107,6 @@ void loop() {
         SaveSD();
         envia_lora();
         }
-
         //DEBUG 
         Serial.print(timestemp);
         Serial.print(";");
@@ -134,7 +134,7 @@ void loop() {
       
       // Flag que indica fim de atividade de recebimento de dados.
       ocioso=true;
-    }
+    
   
   if(SSU.available())
   {  
@@ -164,12 +164,13 @@ void loop() {
       dateNow(); // Quando finalizar a leitura
     }
   } 
-
+}
 
 void SaveSD(){
   
-  SPI.begin(CLK, MISO, MOSI, CS);
-  while(!SD.begin(CS)) {
+  SPI.begin(SD_CLK, SD_MISO, SD_MOSI, SD_CS);
+  while(!SD.begin(SD_CS)) {
+    Serial.println("sd nao iniciado");
     delay(1000);
   }
   String octeto="";
@@ -193,9 +194,11 @@ void SaveSD(){
 }
 
 void envia_lora(){
-    //inicia pinagem para lora
+  
+  //inicia pinagem para lora
   SPI.begin(LORA_SCK,LORA_MISO,LORA_MOSI,LORA_CS);
   LoRa.setPins(LORA_CS,LORA_RST,LORA_DI00);
+  
   Serial.println("LoRa Sender");
   if (!LoRa.begin(BAND)) {
     Serial.println("Starting LoRa failed!");
