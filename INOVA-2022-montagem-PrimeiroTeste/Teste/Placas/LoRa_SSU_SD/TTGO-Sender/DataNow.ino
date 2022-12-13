@@ -1,4 +1,5 @@
 void dateNow(){
+
   rtc.getDate(year, month, day, weekday);
   rtc.getTime(hour, minute, second, period);
   if (!(second % 3)) rtc.setMode(1 - rtc.getMode());

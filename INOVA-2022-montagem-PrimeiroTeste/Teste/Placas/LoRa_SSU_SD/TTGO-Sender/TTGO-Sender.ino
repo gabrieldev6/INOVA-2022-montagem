@@ -34,7 +34,6 @@ File file;
 // Alterado 29/11/22
 // SSD1306  display(0x3c, 22, 21);
 
-
 RTCDS1307 rtc(0x68);
 
 //pinagem lora
@@ -62,24 +61,23 @@ void setup() {
   delay(50); 
   digitalWrite(16, HIGH);
 
+ Serial.begin(115200);
+ 
   SSU.begin(110,SERIAL_8N1, 23, 22);
   while (!SSU);
   
-  Serial.begin(115200);
-
+  Serial.println("LoRa Initial OK!");
   //inicia porta cartao fecha a porta do lora e 
   SPI.end();
-  
 
   Serial.println("Init SD");
   delay(1000);
   
   Serial.begin(115200);
   rtc.begin();
-  // rtc.setDate(22, 12, 7);
-  // rtc.setTime(19, 5, 00);
-
-  Serial.println("LoRa Initial OK!");  
+  //rtc.setDate(22, 12, 12);
+  //rtc.setTime(16, 30, 00);
+  
   SD.remove("/octetos.csv");
   if(SD.exists("/octetos.csv")){
     Serial.println("Falha em apagar o arquivo!");
@@ -93,31 +91,28 @@ void loop() {
     //Timeout: tempo entre dados da SSU excedeu o tempo limite de 50ms. Fim de transmissão SSU.
     //TIMEOUT Observado: 290.0 ms
     //Tempo entre caracteres: 12.0 ms
-    //if((unsigned int)millis()-tempo>50.0 && !ocioso)
-    if(true)
+    if((unsigned int)millis()-tempo>50.0 && !ocioso)
+    //if(true)
     {  
       // Verificação de Bytes: (true) Bytes recebidos com sucesso, (false) descartar Bytes.
       // octetos[7] => último byte recebido.
       // oux_byte => ou exclusivo de todos os bytes recebidos até agora. Tem-se que inverter bit-a-bit o valor de oux_byte antes da verificação.
-      //verificacao_ok=((octetos[7]==((byte)~oux_byte))?true:false);
-      verificacao_ok=true;
+      verificacao_ok=((octetos[7]==((byte)~oux_byte))?true:false);
+      //verificacao_ok=true;
       
       if(verificacao_ok)
       {
         SaveSD();
         envia_lora();
-        }
-        //DEBUG 
-        Serial.print(timestemp);
-        Serial.print(";");
-        Serial.println(octetos_);
-        //Serial.println("Pacote enviado!");
-        
-        SPI.end();
-  
-
       }
-      delay(1000);
+      //DEBUG 
+      Serial.print(timestemp);
+      Serial.print(";");
+      Serial.println(octetos_);
+      //Serial.println("Pacote enviado!");
+      
+      SPI.end();
+      //delay(1000);
 
       //Zera contagem de octetos para nova recepção.  
       indice_octeto=0;
@@ -134,7 +129,7 @@ void loop() {
       
       // Flag que indica fim de atividade de recebimento de dados.
       ocioso=true;
-    
+}
   
   if(SSU.available())
   {  
