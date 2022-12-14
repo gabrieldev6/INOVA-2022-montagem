@@ -14,12 +14,12 @@ String octetos_=" ";
 bool verificacao_ok=false;  // Flag que indica verificação de dados vindos da SSU está ok.
 bool ocioso=true;   // Flag que sinaliza a não recepção de dados da SSU.
 
-unsigned int tempo=0;  // tempo contato entre dados recebidos da SSU a fim de verificar o timeout. ACREDITO NÃO PRECISAR SER LONG. ANALISAR FUTURAMENTE.
+unsigned int tempo=0;  // 0-65535 tempo contato entre dados recebidos da SSU a fim de verificar o timeout. ACREDITO NÃO PRECISAR SER LONG. ANALISAR FUTURAMENTE.
 unsigned int indice_octeto=0; // Índice que aponta para próxima região livre do vetor de octetos.
 
 int counter = 0;
 
-HardwareSerial SSU(1);
+HardwareSerial SSU(1);  //Usa a porta UART1 (em tese é pino 10 TX e pino 9 RX)
 
 File file;
 
@@ -53,6 +53,7 @@ String timestemp = "";
 void SaveSD();
 void dateNow();
 void envia_lora();
+String fileName;
 
 void setup() {
   pinMode(25,OUTPUT); //Send success, LED will bright 1 second
@@ -61,29 +62,66 @@ void setup() {
   delay(50); 
   digitalWrite(16, HIGH);
 
- Serial.begin(115200);
- 
-  SSU.begin(110,SERIAL_8N1, 23, 22);
-  while (!SSU);
-  
-  Serial.println("LoRa Initial OK!");
-  //inicia porta cartao fecha a porta do lora e 
-  SPI.end();
-
-  Serial.println("Init SD");
-  delay(1000);
-  
   Serial.begin(115200);
+ 
+  SSU.begin(110,SERIAL_8N1, 23, 22); // RX no pino 23 e TX no 22
+  while (!SSU); // Aguarda a inicialização da porta serial ligada à SSU
+
+  // Inicialização da comunicação SPI com o módulo lora
+  SPI.begin(LORA_SCK,LORA_MISO,LORA_MOSI,LORA_CS);
+  LoRa.setPins(LORA_CS,LORA_RST,LORA_DI00);
+  
+  Serial.println("LoRa Sender");
+  
+  if (!LoRa.begin(BAND)) {
+    Serial.println("Starting LoRa failed!");
+    while (1);
+  }
+  Serial.println("LoRa Initial OK!");
+  
+  // Finaliza a comunicação SPI com Lora
+  SPI.end();
+  
+  delay(1000);
+
+  // Inicializa RTC
   rtc.begin();
   //rtc.setDate(22, 12, 12);
   //rtc.setTime(16, 30, 00);
-  
-  SD.remove("/octetos.csv");
-  if(SD.exists("/octetos.csv")){
-    Serial.println("Falha em apagar o arquivo!");
+
+  // Inicializa a comunicação SPI com o cartão SD
+  SPI.begin(SD_CLK, SD_MISO, SD_MOSI, SD_CS);
+  while(!SD.begin(SD_CS)) {
+    Serial.println("sd nao iniciado");
+    delay(1000);
+  }
+  dateNow();
+  fileName = "/octetos-";
+  fileName += day;
+  fileName += "_";
+  fileName += month;
+  fileName += "_";
+  fileName += year;
+  fileName += "_";
+  fileName += day;
+  fileName += "_";
+  fileName += hour;
+  fileName += "-";
+  fileName += minute;
+  fileName += "-";
+  fileName += second;
+  fileName+=".csv";
+
+  // Verificação da existência de arquivo
+  if(SD.exists(fileName)){
+    Serial.println("Arquivo já existente!");
     while(1);
   }
+
+   // Finaliza a comunicação SPI com o cartão SD
   SPI.end();
+  
+  Serial.println("SD Inicializado!");
 }
 
 void loop() {
@@ -91,6 +129,10 @@ void loop() {
     //Timeout: tempo entre dados da SSU excedeu o tempo limite de 50ms. Fim de transmissão SSU.
     //TIMEOUT Observado: 290.0 ms
     //Tempo entre caracteres: 12.0 ms
+
+    // Entra quando o ESP32 não estiver ocioso - recebendo dados da SSU - e timeout ocorreu - aguardou mais de 50 milisegundos desde a última recepção.
+    // Entra ao final da recepção serial vinda da SSU ou
+    // quando estava recebendo dados da SSU e deu timeout
     if((unsigned int)millis()-tempo>50.0 && !ocioso)
     //if(true)
     {  
@@ -105,14 +147,17 @@ void loop() {
         SaveSD();
         envia_lora();
       }
-      //DEBUG 
+      //DEBUG
+      /*
+      Serial.print(counter);
+      Serial.print(";");
       Serial.print(timestemp);
       Serial.print(";");
       Serial.println(octetos_);
+      */
       //Serial.println("Pacote enviado!");
       
-      SPI.end();
-      //delay(1000);
+      //SPI.end();
 
       //Zera contagem de octetos para nova recepção.  
       indice_octeto=0;
@@ -155,30 +200,27 @@ void loop() {
      
       // Reinicia a contagem de tempo para avaliação do Timeout.
       tempo=millis();
-
-      dateNow(); // Quando finalizar a leitura
+      
+      // Deve ser comentado em caso de teste
+      //dateNow(); // Quando finalizar a leitura
     }
-  } 
+  }
+  // Deve ser comentado em produção
+  dateNow(); // Quando finalizar a leitura 
 }
 
 void SaveSD(){
   
   SPI.begin(SD_CLK, SD_MISO, SD_MOSI, SD_CS);
-  while(!SD.begin(SD_CS)) {
-    Serial.println("sd nao iniciado");
-    delay(1000);
-  }
-  String octeto="";
-  
-  file = SD.open("/octetos.csv", FILE_APPEND);
+  file = SD.open(fileName, FILE_APPEND);
 
   //erial.println(timestemp);
   file.print(timestemp);
-  file.print(",");
+  file.print(";");
   
   for(int i=0;i<8;i++){
       file.print(octetos[i]);
-      file.print(";");  
+      file.print(":");  
   }
   file.println();
   
@@ -189,27 +231,20 @@ void SaveSD(){
 }
 
 void envia_lora(){
-  
   //inicia pinagem para lora
   SPI.begin(LORA_SCK,LORA_MISO,LORA_MOSI,LORA_CS);
-  LoRa.setPins(LORA_CS,LORA_RST,LORA_DI00);
   
-  Serial.println("LoRa Sender");
-  if (!LoRa.begin(BAND)) {
-    Serial.println("Starting LoRa failed!");
-    while (1);
-  }
-  Serial.println("LoRa Initial OK!");
-  
-  // Formação da string.
   octetos_="";
-  for(int i=0;i<8;i++)
-    octetos_+=octetos[i];
+  for(int i=0;i<8;i++){
+      octetos_+=octetos[i];
+      octetos_+=":";
+  }  // Formação da string.
   
-  Serial.print(counter);
-  Serial.print(": ");
-  Serial.print(octetos_);
-  Serial.println();
+  // Para caso de DEBUG
+  // Serial.print(counter);
+  // Serial.print(": ");
+  // Serial.print(octetos_);
+  // Serial.println();
 
   // send packet
   LoRa.beginPacket();
@@ -220,4 +255,6 @@ void envia_lora(){
   counter++;
 
   SPI.end();
+  // Em caso de DEBUG
+  Serial.println("Enviado via LoRA!");
 }
